@@ -1,95 +1,117 @@
 import tkinter as tk
 import math
-from decimal import Decimal
 
-class App:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("별의 절대등급 계산기")
+# 초기 설정
+canvas_width = 1200
+canvas_height = 600
+center_x = 600
+center_y = 300
+circle_radius = 200  # 원의 반지름
+earth_radius = 10
 
-        # 프레임 생성
-        self.frame1 = tk.Frame(self.master)
-        self.frame2 = tk.Frame(self.master)
+# 별 목록 (색상, 크기, 이름, 절대등급)
+star_options = [
+    ('#FFFAF0', 8, '시리우스', -1.46),  # 시리우스 (푸른 흰색)
+    ('#FFFFFF', 12, '베가', 0.03),       # 베가 (흰색)
+    ('#FF4500', 25, '아르크투루스', -0.05), # 아르크투루스 (주황색)
+    ('#B0C4DE', 50, '카노푸스', -5.53)     # 카노푸스 (푸른 흰색)
+]
 
-        # 첫 번째 페이지 UI
-        self.label1_1 = tk.Label(self.frame1, text="표면온도(K)를 입력하세요")
-        self.label1_2 = tk.Label(self.frame1, text="별의 반지름을 입력하세요(M)")
-        self.label1_3 = tk.Label(self.frame1, text="별과의 거리를 입력하세요(파섹)")
-        self.entry1 = tk.Entry(self.frame1)
-        self.entry2 = tk.Entry(self.frame1)
-        self.entry3 = tk.Entry(self.frame1)
-        self.label2_1 = tk.Label(self.frame1, text="단위 시간에 단위 면적당 방출하는 에너지 양(W/m²) :")
-        self.label2_2 = tk.Label(self.frame1, text="별의 광도(W) :")
-        self.label2_3 = tk.Label(self.frame1, text="별의 등급 :")
-        self.label3_1 = tk.Label(self.frame1, text="")
-        self.label3_2 = tk.Label(self.frame1, text="")
-        self.label3_3 = tk.Label(self.frame1, text="")
-        self.button1 = tk.Button(self.frame1, text="계산", command=self.calculate)
-        self.button2 = tk.Button(self.frame1, text="다음 페이지", command=self.show_frame2)
+current_star_index = 0  # 현재 별 인덱스
+sun_distance = 200  # 태양과 지구 간의 초기 거리
 
-        # 그리드 배치
-        self.label1_1.grid(column=1, row=0)
-        self.entry1.grid(column=3, row=0)
-        self.label1_2.grid(column=1, row=1)
-        self.entry2.grid(column=3, row=1)
-        self.label1_3.grid(column=1, row=2)
-        self.entry3.grid(column=3, row=2)
-        self.button1.grid(column=2, row=3)
-        self.button2.grid(column=2, row=4)
+# Tkinter 초기화
+root = tk.Tk()
+canvas = tk.Canvas(root, width=canvas_width, height=canvas_height, bg='black')
+canvas.pack()
 
-        # 결과 레이블 그리드 추가
-        self.label2_1.grid(column=1, row=5)
-        self.label3_1.grid(column=3, row=5)
-        self.label2_2.grid(column=1, row=6)
-        self.label3_2.grid(column=3, row=6)
-        self.label2_3.grid(column=1, row=7)
-        self.label3_3.grid(column=3, row=7)
+# 태양의 초기 속성
+sun_color, sun_radius, sun_name, sun_absolute_magnitude = star_options[current_star_index]
+sun_id = canvas.create_oval(0, 0, sun_radius * 2, sun_radius * 2, fill=sun_color)
 
-        # 두 번째 페이지 UI
-        self.label2 = tk.Label(self.frame2, text="두 번째 페이지입니다.")
-        self.button_back = tk.Button(self.frame2, text="첫 번째 페이지로 돌아가기", command=self.show_frame1)
+# 거리 슬라이더와 라벨
+distance_slider = tk.Scale(root, from_=70, to=500, orient='horizontal', showvalue=False)
+distance_slider.set(sun_distance)
+distance_slider.pack()
 
-        self.label2.grid(column=1, row=0)
-        self.button_back.grid(column=1, row=1)
+# 거리 라벨 추가
+distance_label = tk.Label(root, text=f"거리: {sun_distance / 20:.1f} 파섹", bg='black', fg='white')
+distance_label.pack()
 
-        # 프레임을 초기화
-        self.frame1.pack()
+# 별 이름과 절대등급 라벨 추가
+star_info_label = tk.Label(root, text=f"{sun_name} (절대등급: {sun_absolute_magnitude})", bg='black', fg='white', font=('Arial', 14))
+star_info_label.pack()
 
-    def show_frame1(self):
-        self.frame2.pack_forget()
-        self.frame1.pack()
+# 겉보기 등급 라벨 추가
+apparent_magnitude_label = tk.Label(root, text="", bg='black', fg='white', font=('Arial', 14))
+apparent_magnitude_label.pack()
 
-    def show_frame2(self):
-        self.frame1.pack_forget()
-        self.frame2.pack()
+# 설명 추가
+discribe = tk.Label(root, text="가운데 파란 행성은 지구, 하얀색 테두리는 지구로부터 거리가 10파섹인 곳입니다.",font=('Arial', 14))
+discribe.pack()
 
-    def calculate(self):
-        data1 = float(self.entry1.get())  # 표면온도
-        data2 = float(self.entry2.get())  # 별의 반지름
-        data3 = float(self.entry3.get())  # 거리 (파섹)
+# 원 그리기 (테두리만)
+def draw_circle():
+    canvas.create_oval(center_x - circle_radius, center_y - circle_radius,
+                       center_x + circle_radius, center_y + circle_radius,
+                       outline='white', width=2)  # 테두리 색상과 두께
 
-        # 단위 면적당 방출하는 에너지 양 계산
-        result1 = (data1 ** 4) * 5.67 / 100000000  # W/m²
-        # 별의 광도 계산
-        result2 = result1 * 9.87 * 4 * (data2 ** 2)  # W
+# 지구 그리기
+def draw_earth():
+    canvas.create_oval(center_x - earth_radius, center_y - earth_radius,
+                       center_x + earth_radius, center_y + earth_radius,
+                       fill='blue')
 
-        # 겉보기 등급 계산
-        L_sun = 3.828 * 10**26  # 태양의 광도 W
-        m = -2.5 * math.log10(result2 / L_sun) + 4.83  # 겉보기 등급
+# 겉보기 등급 계산
+def calculate_apparent_magnitude(absolute_magnitude, distance):
+    d = distance / 20  # px를 파섹으로 변환
+    apparent_magnitude = absolute_magnitude + 5 * (math.log10(d) - 1)
+    return apparent_magnitude
 
-        # 절대등급 계산
-        M = m - 5 * math.log10(data3 / 10)  # 절대등급
+# 태양 위치 업데이트
+def update_sun_position(distance):
+    global sun_distance
+    sun_distance = float(distance)
+    sun_x = center_x + sun_distance
+    sun_y = center_y
 
-        result1 = Decimal(result1)
-        result2 = Decimal(result2)
-        M = Decimal(M)
+    canvas.coords(sun_id, sun_x - sun_radius, sun_y - sun_radius,
+                  sun_x + sun_radius, sun_y + sun_radius)
 
-        # 레이블에 결과 출력
-        self.label3_1.config(text=f"{result1:.0f} W/m²")  # 단위 추가
-        self.label3_2.config(text=f"{result2:.0f} W")      # 단위 추가
-        self.label3_3.config(text=f"{M:.2f}")              # 절대등급
+    apparent_magnitude = calculate_apparent_magnitude(sun_absolute_magnitude, sun_distance)
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = App(root)
-    root.mainloop()
+    distance_label.config(text=f"거리: {sun_distance / 20:.1f} 파섹")
+    apparent_magnitude_label.config(text=f"겉보기 등급: {apparent_magnitude:.2f}")
+
+# 별 변경
+def change_star():
+    global current_star_index, sun_color, sun_radius, sun_name, sun_absolute_magnitude
+    current_star_index = (current_star_index + 1) % len(star_options)
+    sun_color, sun_radius, sun_name, sun_absolute_magnitude = star_options[current_star_index]
+
+    canvas.itemconfig(sun_id, fill=sun_color)
+    canvas.coords(sun_id, 0, 0, sun_radius * 2, sun_radius * 2)
+
+    # 거리 고정: 태양과 지구 간의 거리를 200px로 설정
+    sun_distance = 200
+    distance_slider.set(sun_distance)
+    update_sun_position(sun_distance)  # 위치 업데이트
+
+    star_info_label.config(text=f"{sun_name} (절대등급: {sun_absolute_magnitude})")
+
+# 슬라이더 변경 이벤트
+distance_slider.config(command=update_sun_position)
+
+# 별 바꾸기 버튼
+change_star_button = tk.Button(root, text='별 바꾸기', command=change_star)
+change_star_button.pack()
+
+# 초기 그리기
+draw_circle()  # 원 그리기
+draw_earth()    # 지구 그리기
+update_sun_position(sun_distance)  # 태양 위치 업데이트
+
+# Tkinter 메인 루프
+root.title("Earth and Star Simulation")
+root.mainloop()
+
